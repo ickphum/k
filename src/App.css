@@ -4,7 +4,8 @@
 
 .button-panel {
     background-color:   cyan;
-    padding:            4px;
+    height:             20px;
+    padding:            10px;
 }
 
 .button {
@@ -12,5 +13,5 @@
     border:             1px solid black;
     user-select:        none;
     padding:            2px;
-    margin:             2px;
+    margin:             40px 4px 0 0;
 }
