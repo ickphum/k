@@ -2,16 +2,33 @@
   background-color: white;
 }
 
-.button-panel {
-    background-color:   cyan;
-    height:             20px;
-    padding:            10px;
+.tagSelector {
+    flex-grow: 1;
 }
 
-.button {
-    background-color:   white;
-    border:             1px solid black;
-    user-select:        none;
-    padding:            2px;
-    margin:             40px 4px 0 0;
+.htmlContent {
+    max-height: calc(100vh - 30px);
+    overflow-y: scroll;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
 }
+
+button {
+    border-radius: 25%;
+    margin: 2px;
+}
+
+.tagButton {
+    background-color: rgb(229, 226, 226);
+}
+
+.tagButton.selected {
+    background-color: rgb(141, 230, 175) !important;
+}
+
+.topButtons {
+    display: flex;
+    flex-direction: row;
+    height: 30px;
+    align-items: center;
+} 

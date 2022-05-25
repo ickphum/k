@@ -1,353 +1,329 @@
-import React, { useRef, useState, useEffect  } from "react";
-import { Canvas, useFrame, useThree } from "react-three-fiber";
-import * as THREE from "three";
-import Optimer from './fonts/optimer_regular.typeface.json';
+import React, { useRef, useState, useEffect, useCallback  } from "react";
 
 import './App.css';
+import data from './data.json';
 
-const font = new THREE.FontLoader().parse( Optimer );
+const FAVORITE_FILES = "ikmreader_favoriteFiles";
+const FAVORITE_AUTHORS = "ikmreader_favoriteAuthors";
+const HISTORY = "ikmreader_history";
 
-const makePairs = ( count1, count2 ) => {
+// eslint-disable-next-line max-statements
+const App = () => {
 
-    const pairs = [];
+    const [ nameFilter, setNameFilter ] = useState( "" );
+    const [ authorFilter, setAuthorFilter ] = useState( "" );
+    const [ author, setAuthor ] = useState( "" );
+    const [ minSize, setMinSize ] = useState( 0 );
+    const [ selectedTags, setSelectedTags ] = useState([]);
+    const [ file, setFile ] = useState( '' );
+    const [ html, setHtml ] = useState( '' );
+    const [ showTags, setShowTags ] = useState( 0 );
+    const [ showFavoriteStories, setShowFavoriteStories ] = useState( 0 );
+    const [ showFavoriteAuthors, setShowFavoriteAuthors ] = useState( 0 );
+    const [ showHistory, setShowHistory ] = useState( 0 );
+    const htmlRef = useRef( null );
+    const scrollFlagRef = useRef( false );
+    const scrollRAFRef = useRef( null );
+    const scrollCounterRef = useRef( 0 );
+    const [ scrollSpeed, setScrollSpeed ] = useState( 0 );
 
-    if ( count1 && count2 ) {
-        const increment1 = count1 > 1 ? 2 / ( count1 - 1 ) : 0;
-        const increment2 = count2 > 1 ? 2 / ( count2 - 1 ) : 0;
-        for ( let y = 0; y < count1; y++ ) {
-            for ( let z = 0; z < count2; z++ )
-                pairs.push([ -1 + y * increment1, -1 + z * increment2 ]);
 
-        }
-    }
-    return pairs;
-};
-
-const Box = ( props ) => {
-    // This reference will give us direct access to the mesh
-    const group = useRef();
-    const {
-        xSettings,
-        ySettings,
-        zSettings,
-        dim
-    } = props;
-
-    // Rotate mesh every frame, this is outside of React without overhead
-    useFrame( () => {
-        // group.current.rotation.x = group.current.rotation.y += rotate;
-        // group.current.rotation.x += rotate;
+    const [ favoriteFiles, setFavoriteFiles ] = useState( () => {
+        // getting stored value
+        const saved = localStorage.getItem( FAVORITE_FILES );
+        const initialValue = JSON.parse( saved );
+        return initialValue || [];
     });
 
-    const size = 1;
+    useEffect( () => {
+        localStorage.setItem( FAVORITE_FILES, JSON.stringify( favoriteFiles ) );
+    }, [ favoriteFiles ]);
 
-    const textOptions = {
-        font,
-        size:   5,
-        height: 1
+    const toggleFavoriteFile = file => {
+        if ( favoriteFiles.find( f => f.path === file.path ) ) {
+            setFavoriteFiles([ ...favoriteFiles.filter( f => f.path !== file.path )  ]);
+            reset();
+        }
+        else
+            setFavoriteFiles([ ...favoriteFiles, file ]);
+    };
+
+    const fileIsFavorite = file && favoriteFiles.find( f => f.path === file );
+
+
+    const [ favoriteAuthors, setFavoriteAuthors ] = useState( () => {
+        const saved = localStorage.getItem( FAVORITE_AUTHORS );
+        const initialValue = JSON.parse( saved );
+        return initialValue || [];
+    });
+
+    useEffect( () => {
+        localStorage.setItem( FAVORITE_AUTHORS, JSON.stringify( favoriteAuthors ) );
+    }, [ favoriteAuthors ]);
+
+    const toggleFavoriteAuthor = author => {
+        if ( favoriteAuthors.find( a => a === author ) ) {
+            setFavoriteAuthors([ ...favoriteAuthors.filter( a => a !== author )  ]);
+            reset();
+        }
+        else
+            setFavoriteAuthors([ ...favoriteAuthors, author ]);
     };
 
 
-    const xPairs = makePairs( xSettings.axis1Count, xSettings.axis2Count );
-    const yPairs = makePairs( ySettings.axis1Count, ySettings.axis2Count );
-    const zPairs = makePairs( zSettings.axis1Count, zSettings.axis2Count );
-
-
-    return (
-        <group ref={group} {...props}>
-
-            {xPairs.map( ( pair ) => {
-                return <mesh onClick={() => console.log( 'X', pair  )} position={[ 0, pair[ 0 ] * dim / 2, pair[ 1 ] * dim / 2  ]}>
-                    <boxBufferGeometry args={[ dim, size, size  ]} />
-                    <meshStandardMaterial
-                        attach="material"
-                        color={0xff0000}
-                    />
-                </mesh>;
-            })}
-            {yPairs.map( ( pair ) => {
-                return <mesh position={[ pair[ 0 ] * dim / 2, 0, pair[ 1 ] * dim / 2 ]}>
-                    <boxBufferGeometry args={[ size, dim, size  ]} />
-                    <meshStandardMaterial
-                        attach="material"
-                        color={0x00ff00}
-                    />
-                </mesh>;
-            })}
-            {zPairs.map( ( pair ) => {
-                return <mesh position={[ pair[ 0 ] * dim / 2, pair[ 1 ] * dim / 2, 0 ]}>
-                    <boxBufferGeometry args={[ size, size, dim  ]} />
-                    <meshStandardMaterial
-                        attach="material"
-                        color={0x0000ff}
-                    />
-                </mesh>;
-            })}
-
-            {/* axes */}
-            <mesh position={[ 0, 0, 0 ]}>
-                <boxBufferGeometry args={[ dim, 0.1, 0.1 ]} />
-                <meshStandardMaterial
-                    attach="material"
-                    color={0xff0000}
-                />
-
-            </mesh>
-            <mesh position={[ dim / 2, -textOptions.size / 2, 0 ]}>
-                <textGeometry attach='geometry' args={[ 'X', textOptions ]} />
-                <meshStandardMaterial
-                    attach="material"
-                    color={0xff0000}
-                />
-            </mesh>
-
-            <mesh position={[ 0, 0, 0 ]}>
-                <boxBufferGeometry args={[ 0.1, dim, 0.1 ]} />
-                <meshStandardMaterial
-                    attach="material"
-                    color={0x00ff00}
-                />
-            </mesh>
-            <mesh position={[ -textOptions.size / 2, dim / 2, 0 ]}>
-                <textGeometry attach='geometry' args={[ 'Y', textOptions ]} />
-                <meshStandardMaterial
-                    attach="material"
-                    color={0x00ff00}
-                />
-            </mesh>
-
-            <mesh position={[ 0, 0, 0 ]}>
-                <boxBufferGeometry args={[  0.1, 0.1, dim ]} />
-                <meshStandardMaterial
-                    attach="material"
-                    color={0x0000ff}
-                />
-            </mesh>
-
-            <mesh position={[ 0, 0, 0 ]}>
-                <boxBufferGeometry args={[ dim / 10, 1, 1 ]} />
-                <meshStandardMaterial
-                    attach="material"
-                    color={0xff0000}
-                />
-            </mesh>
-            <mesh position={[ 0, 0, 0 ]}>
-                <boxBufferGeometry args={[ 1, dim / 10, 1 ]} />
-                <meshStandardMaterial
-                    attach="material"
-                    color={0x00ff00}
-                />
-            </mesh>
-            <mesh position={[ 0, 0, 0 ]}>
-                <boxBufferGeometry args={[  1, 1, dim / 10 ]} />
-                <meshStandardMaterial
-                    attach="material"
-                    color={0x0000ff}
-                />
-            </mesh>
-        </group>
-    );
-};
-
-const SettingButton = props => {
-    const {
-        value,
-        increment,
-        factor,
-        min,
-        max,
-        places = 2
-    } = props;
-    return <span
-        className="button"
-        onClick={e => {
-            const newValue = increment
-                ? e.shiftKey ? value - increment : value + increment
-                : e.shiftKey
-                    ? Math.abs( value ) < 0.00001 ? 0 : value / factor
-                    : Math.abs( value ) < 0.00001 ? 0.00001 : value * factor;
-            if ( ( max === undefined || newValue <= max ) && ( min === undefined || newValue >= min ) )
-                props.setter( Math.round( newValue * 1000000 ) / 1000000 );
-        }}>
-        {props.label} = {Number( props.value ).toFixed( places )}
-    </span>;
-};
-
-const AxisSettings = props => {
-    const {
-        label,
-        axis1,
-        axis2,
-        settings,
-        setter
-    } = props;
-    return <>
-        <div style={{ background: "transparent", marginBottom: 5, marginTop: 5 }}>
-            {label}
-        </div>
-        <div style={{ background: "transparent" }}>
-            <SettingButton
-                label={axis1}
-                value={settings.axis1Count}
-                increment={1}
-                setter={v => setter({ ...settings, axis1Count: v })}
-                min={1}
-                places={0}
-            />
-            <SettingButton
-                label={axis2}
-                value={settings.axis2Count}
-                increment={1}
-                setter={v => setter({ ...settings, axis2Count: v })}
-                min={1}
-                places={0}
-            />
-        </div>
-    </>;
-
-};
-
-const calculateCameraZ = ( fov, size ) => Math.cos( ( fov / 2 ) * Math.PI / 180 ) * ( ( size * 2 ) / Math.sin( ( fov / 2 ) * Math.PI / 180 ) );
-
-const bounded = ( value, lower, upper ) => Math.max( lower, Math.min( upper, value ) );
-
-const App = () => {
-    const [ fov, setFov ] = useState( 70 );
-    const [ rotX, setRotX ] = useState( 0 );
-    const [ rotY, setRotY ] = useState( 0 );
-    const [ rotZ, setRotZ ] = useState( 0 );
-    const [ dim, setDim ] = useState( 100 );
-    const [ cameraZ, setCameraZ ] = useState( calculateCameraZ( fov, dim ) );
-    const [ dimensions, setDimensions ] = useState({
-        height: window.innerHeight,
-        width:  window.innerWidth
+    const [ history, setHistory ] = useState( () => {
+        const saved = localStorage.getItem( HISTORY );
+        const initialValue = JSON.parse( saved );
+        // console.log( 'history loaded', initialValue );
+        return initialValue || [];
     });
-    const [ rotating, setRotating ] = useState( false );
-    const [ xSettings, setXSettings ] = useState({
-        axis1Count: 2,
-        axis2Count: 2
-    });
-    const [ ySettings, setYSettings ] = useState({
-        axis1Count: 2,
-        axis2Count: 2
-    });
-    const [ zSettings, setZSettings ] = useState({
-        axis1Count: 2,
-        axis2Count: 2
-    });
-
-    function Camera( props ) {
-        const ref = useRef();
-        const { setDefaultCamera } = useThree();
-
-        // Make the camera known to the system
-        useEffect( () => void setDefaultCamera( ref.current ), [ setDefaultCamera ]);
-
-        // Update it every frame
-        useFrame( () => {
-            if ( ref.current )
-                ref.current.updateMatrixWorld();
-        });
-        return <perspectiveCamera ref={ref} {...props} />;
-    }
-
 
     useEffect( () => {
-        function handleResize() {
-            setDimensions({
-                height: window.innerHeight,
-                width:  window.innerWidth
-            });
+        localStorage.setItem( HISTORY, JSON.stringify( history ) );
+    }, [ history ]);
+
+    const addHistoryFile = file => {
+        // console.log( 'add history file', file, history, history.find( f => f === file ) );
+        setHistory( history => {
+            return history.find( f => f === file )
+                ? history
+                : [ ...history, file ];
+        });
+    };
+
+
+    const authorIsFavorite = author && favoriteAuthors.find( a => a === author );
+
+    const addTag = tag => {
+        setSelectedTags([ ...selectedTags, tag ]);
+    };
+
+    const removeTag = deadTag => {
+        setSelectedTags( selectedTags.filter( tag => tag !== deadTag ) );
+    };
+
+    const intersect = ( a, b ) => {
+        var setB = new Set( b );
+        return [ ...new Set( a ) ].filter( x => setB.has( x ) );
+    };
+
+    // if we have selected tags, the list of tags we display is the full list filtered into
+    // all the tags who appear with the selected tags.
+    const validTags = () => {
+        return selectedTags.reduce( ( acc, cur ) => {
+            return intersect( acc, Object.keys( data.tag[ cur ].otherTags ) );
+        }, Object.keys( data.tag ) );
+    };
+
+    const availableTags = selectedTags.length
+        ? validTags()
+        : Object.keys( data.tag );
+
+    const fileHasAllTags = ( file, tags ) => tags.length === 0 || tags.every( t => data.file[ file ].tags[ t ]);
+    // const fileHasSomeTags = ( ft, tags ) => tags.length === 0 || tags.some( t => data.file[ ft ].tags[ t ]);
+
+    const matches = selectedTags.length || nameFilter || authorFilter || minSize > 9999
+        ? Object.keys( data.file ).filter( file => ( ( !nameFilter || ( new RegExp( nameFilter, 'i' ).test( file ) ) ) &&
+            ( !authorFilter || ( new RegExp( authorFilter, 'i' ).test( data.file[ file ].author ) ) ) &&
+            ( selectedTags.length === 0 || fileHasAllTags( file, selectedTags ) ) &&
+            ( !minSize || minSize < 9999 || data.file[ file ].size > minSize ) ) )
+        : [];
+
+    const authors = authorFilter
+        ? Object.keys( data.author ).filter( author => ( new RegExp( authorFilter, 'i' ).test( author ) ) )
+        : [];
+
+    const reset = () => {
+        setFile( void 0 );
+        setAuthor( void 0 );
+        if ( htmlRef.current )
+            htmlRef.current.scrollTop = 0;
+    };
+
+    const openFile = file => {
+
+        fetch( `html${file}` )
+            .then( r => r.text() )
+            .then( t => t.replaceAll( "�", "'" ) )
+            .then( t => setHtml( t ) )
+            .then( () => htmlRef.current.scrollTop = 0 );
+        setFile( file );
+        setAuthor( void 0 );
+        addHistoryFile( file );
+        // htmlRef.current.scrollTop = 0;
+
+    };
+
+    const shortSize = size => String( size >> 10 ) + 'k';
+
+    const scroll = useCallback( () => {
+        if ( scrollFlagRef.current && htmlRef.current ) {
+            if ( scrollCounterRef.current >= scrollSpeed ) {
+                htmlRef.current.scrollTop += 1;
+                scrollCounterRef.current = 0;
+            }
+            else
+                scrollCounterRef.current++;
         }
+        scrollRAFRef.current = requestAnimationFrame( scroll );
+    }, [ scrollSpeed ]);
 
-        window.addEventListener( 'resize', handleResize );
+    const jump = e => {
+        const topQuarter = htmlRef.current.clientHeight * 0.25;
+        const bottomQuarter = htmlRef.current.clientHeight * 0.75;
+        if ( e.clientY < topQuarter )
+            htmlRef.current.scrollTop -= htmlRef.current.clientHeight - 20;
+        if ( e.clientY > bottomQuarter )
+            htmlRef.current.scrollTop += htmlRef.current.clientHeight - 20;
+    };
 
-        return () => {
-            window.removeEventListener( 'resize', handleResize );
-        };
-    });
+    useEffect( () => {
+        // console.log( 'add fake history'  );
+        window.history.pushState( null, document.title, window.location.href );
+        window.addEventListener( 'popstate', function() {
+            // console.log( 'popstate'  );
+            window.history.pushState( null, document.title,  window.location.href );
+            reset();
+        });
+    }, []);
+
+    useEffect( () => {
+        if ( scrollRAFRef.current )
+            cancelAnimationFrame( scrollRAFRef.current );
+        scrollRAFRef.current = requestAnimationFrame( scroll );
+    }, [ scroll ]);
+
+    // map max - 0 into 0 - 255
+    const hueRange = ( value, max ) => Math.max( max - value, 0 ) * 255 / max;
+
+    const fileColor = file => ( `hsl(${hueRange( data.file[ file ].size, 250000 )}, 100%, 90%)` );
+    const tagColor = tag => ( `hsl(${hueRange( data.tag[ tag ].count, 2048 )}, 100%, 90%)` );
+    const authorColor = author => ( `hsl(${hueRange( data.author[ author ].files.length, 10 )}, 100%, 90%)` );
+
+    const FileList = ({ files, tags, label = "Stories:", sortFunction = ( a, b ) => data.file[ b ].size - data.file[ a ].size }) => (
+        <div>
+            {label}
+            {files
+                .filter( ( v, i ) => data.file[ v ] && i < 100 )
+                .sort( sortFunction )
+                .map( file => <button style={{ backgroundColor: fileColor( file ) }} className="fileButton" key={file} onClick={() => openFile( file )}>
+                    {data.file[ file ].title}
+                    &nbsp;
+                    {shortSize( data.file[ file ].size )}
+                    &nbsp;
+                    {tags && Object.keys( data.file[ file ].tags ).join( ' ' )}
+                </button>
+                )
+            }
+        </div>
+    );
+
+    const TagList = ({ tags }) => tags.sort( ( a, b ) => data.tag[ b ].count - data.tag[ a ].count )
+        .filter( ( v, i ) => showTags === 2 || i < 150 )
+        .map( tag => <button style={{ backgroundColor: tagColor( tag ) }} className="tagButton" type="button" key={tag} onClick={() => addTag( tag )} >{tag}</button> );
+
+    const AuthorList = ({ authors }) => authors?.length ? <div>
+        {authors
+            .sort( ( a, b ) => data.author[ b ].files.length - data.author[ a ].files.length )
+            .filter( ( a, i ) => i < 50 )
+            .map( author => <button
+                style={{ backgroundColor: authorColor( author ) }}
+                key={author}
+                onClick={() => setAuthor( author )}>{author} {data.author[ author ].files.length}
+            </button> )}
+    </div> : null;
+
+    if ( file )
+        console.log( 'file', data.file[ file ]);
+
+    if ( author )
+        console.log( 'author', author, data.author[ author ] );
 
     return (
-        <div style={{ height: "100vh", display: "flex", flexDirection: 'column' }}>
-            <div
-                className="button-panel"
-            >
-                <SettingButton label="RotX" value={rotX} increment={Math.PI / 8} setter={setRotX} />
-                <SettingButton label="RotY" value={rotY} increment={Math.PI / 8} setter={setRotY} />
-                <SettingButton label="RotZ" value={rotZ} increment={0.1} setter={setRotZ} />
-
-                <SettingButton label="CZ" value={cameraZ} increment={20} setter={setCameraZ} />
-                <SettingButton label="FOV" value={fov} increment={5} setter={setFov} places={0} />
-
-                <SettingButton label="Dim" value={dim} increment={1} setter={setDim} places={0} />
-                Window Size {dimensions.width}x{dimensions.height}
-
-            </div>
-            <div style={{ width: "100vw", height: "calc(100vh - 40px)", display: "flex", flexDirection: 'row' }}>
-                <div style={{ background: "#ddd", padding: "10px", width: "20rem" }}>
-                    <AxisSettings label="X Settings" axis1="Y Count" axis2="Z Count" settings={xSettings} setter={setXSettings} />
-                    <AxisSettings label="Y Settings" axis1="X Count" axis2="Z Count" settings={ySettings} setter={setYSettings} />
-                    <AxisSettings label="Z Settings" axis1="X Count" axis2="Y Count" settings={zSettings} setter={setZSettings} />
+        <div style={{ display: "flex", flexDirection: 'column' }}>
+            {author ? <>
+                <div className="topButtons" >
+                    <button className={`tagButton ${authorIsFavorite ? 'selected' : ''}`} onClick={() => {
+                        toggleFavoriteAuthor( author );
+                    }}
+                    >
+                        {author}
+                    </button>
+                    <button onClick={() => setAuthor( void 0 )}>Back</button>
+                    <button onClick={() => reset()}>Main</button>
                 </div>
+                <FileList files={data.author[ author ]?.files} tags />
+            </>
 
-                <Canvas
-                    // onClick={( e ) => console.log( 'click', e.button, e.shiftKey )}
-                    onContextMenu={( e ) => console.log( 'context menu' )}
-                    onDoubleClick={( e ) => console.log( 'double click' )}
-                    onWheel={( e ) => {
-                        console.log( 'wheel spins', e.deltaY, e.shiftKey );
-                        if ( e.shiftKey ) {
-                            const newFov = bounded( fov + ( e.deltaY < 0 ? -5 : 5 ), 5, 180 );
-                            console.log( 'newFov', newFov );
-                            setCameraZ( calculateCameraZ( newFov, dim ) );
-                            setFov( newFov );
-                        }
-                        else
-                            setCameraZ( cameraZ + cameraZ * ( e.deltaY < 0 ? -( 1 / 11 ) : 0.1 ) );
-                    }}
-                    onPointerDown={( e ) => {
-                        console.log( 'down', e.button, e.shiftKey );
-                        // if ( e.shiftKey )
-                        setRotating( true );
-                    }}
-                    onPointerUp={( e ) => {
-                        console.log( 'up', e.button, e.shiftKey );
-                        if ( rotating )
-                            setRotating( false );
-                    }}
-                    onPointerOver={( e ) => console.log( 'over' )}
-                    onPointerOut={( e ) => console.log( 'out' )}
-                    onPointerEnter={( e ) => console.log( 'enter' )} // see note 1
-                    onPointerLeave={( e ) => console.log( 'leave' )} // see note 1
-                    onPointerMove={( e ) => {
+                : file
+                    ? <>
+                        <div className="topButtons" >
+                            <button className={`tagButton ${fileIsFavorite ? 'selected' : ''}`} onClick={() => {
+                                toggleFavoriteFile( data.file[ file ]);
+                            }}
+                            >
+                                {data.file[ file ]?.title}
+                            </button>
+                            <button onClick={() => {
+                                setAuthor( data.file[ file ].author );
+                                htmlRef.current.scrollTop = 0;
+                            }}>{data.file[ file ]?.author}</button>
+                            <button onClick={() => reset()}>Main</button>
+                            <button onClick={() => setScrollSpeed( scrollSpeed + 1 )}>Slower</button>
+                            {scrollSpeed}
+                            <button onClick={() => {
+                                if ( scrollSpeed > 0 ) setScrollSpeed( scrollSpeed - 1 ); }
+                            }>Faster</button>
+                        </div>
+                        <div
+                            ref={htmlRef}
+                            className="htmlContent"
+                            onDoubleClick={e => {
+                                const topQuarter = htmlRef.current.clientHeight * 0.25;
+                                const bottomQuarter = htmlRef.current.clientHeight * 0.75;
+                                if ( e.clientY > topQuarter && e.clientY < bottomQuarter )
+                                    scrollFlagRef.current = !scrollFlagRef.current;
+                            }}
+                            onClick={jump}
+                            dangerouslySetInnerHTML={{ __html: html }}
+                        />
+                    </>
+                    : <>
+                        <div>Title: <input type="text" value={nameFilter} onChange={e => setNameFilter( e.target.value )}/></div>
+                        <div>Author: <input type="text" value={authorFilter} onChange={e => setAuthorFilter( e.target.value )}/></div>
+                        <AuthorList authors={authors} />
 
-                        // console.log( 'move', e.movementX, e.movementY, e.shiftKey );
+                        <div>Min Size: <input type="number" onChange={e => setMinSize( Number( e.target.value ) )}/></div>
+                        <div className="tagSelector">
+                            {selectedTags.length ? "Tags:" : ""}
+                            {selectedTags.map( tag =>
+                                <button className={"tagButton selected"} type="button" key={tag} onClick={() => removeTag( tag )} >{tag}</button> )}
+                        </div>
+                        <div className="tagSelector">
+                            <button onClick={() => setShowTags( ( showTags + 1 ) % 3 )}>Pick Tags</button>
+                            {showTags > 0 && <TagList tags={availableTags} /> }
+                        </div>
+                        <div className="tagSelector">
+                            <button onClick={() => setShowFavoriteStories( ( showFavoriteStories + 1 ) % 2 )}>Favorites</button>
+                            { showFavoriteStories > 0 && favoriteFiles.length > 0 ? <FileList files={favoriteFiles.map( f => f.path )} label="" /> : null}
+                        </div>
+                        <div className="tagSelector">
+                            <button onClick={() => setShowFavoriteAuthors( ( showFavoriteAuthors + 1 ) % 2 )}>Favorite Authors</button>
+                            { showFavoriteAuthors > 0 && <AuthorList authors={favoriteAuthors} />}
+                        </div>
+                        <div className="tagSelector">
+                            <button onClick={() => setShowHistory( ( showHistory + 1 ) % 2 )}>History</button>
+                            { showHistory > 0 && history.length > 0 ? <>
+                                {/* <button onClick={() => setHistory([])}>Clear</button> */}
+                                <FileList files={history} label="" sortFunction={() => -1} />
+                            </> : null}
+                        </div>
+                        <FileList files={matches} />
+                    </>
+            }
 
-                        // X and Y rotations are tracked in the range -2 to 2, which will then be multiplied
-                        // by Pi, so that max rotation in either direction is all the way around but no further.
-                        // Translate pixels to rotation by saying a full drag across the screen does a full
-                        // rotation, ie changes rotation by 2, so dR = change/full * 2.
-                        if ( rotating ) {
-                            const newRotX = bounded( rotX + 2 * e.movementY / dimensions.height, -2, 2 );
-                            const newRotY = bounded( rotY + 2 * e.movementX / dimensions.width, -2, 2 );
-                            setRotX( newRotX );
-                            setRotY( newRotY );
-                        }
-                    }}
-                    onPointerMissed={() => console.log( 'missed' )}
 
-                >
-                    <Camera position={[ 0, 0, cameraZ ]} fov={fov} far={10000} />
-                    <ambientLight intensity={0.5} />
-                    <Box
-                        position={[ 0, 0, 0 ]}
-                        xSettings={xSettings}
-                        ySettings={ySettings}
-                        zSettings={zSettings}
-                        rotation={[ rotX * Math.PI, rotY * Math.PI, rotZ ]}
-                        dim={dim} />
-                </Canvas>
-            </div>
+            {/* <button type="button" onClick={() => console.log( 'click', nameFilter, minSize )} >Search</button> */}
         </div>
     );
 };
