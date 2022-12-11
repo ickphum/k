@@ -1,0 +1,6 @@
+#!/usr/bin/bash
+rm -f public/html
+ln -s /home/ikm/Shares/x/text/kristen/html public/html
+ln -sf /home/ikm/Shares/x/text/kristen/data.json src/data.json
+# ln -s /home/ikm/Shares/x/text/cssa_reader/html public/html
+# ln -sf /home/ikm/Shares/x/text/cssa_reader/data.json src/data.json
