@@ -159,7 +159,7 @@ const App = () => {
     const scroll = useCallback( () => {
         if ( scrollFlagRef.current && htmlRef.current ) {
             if ( scrollCounterRef.current >= scrollSpeed ) {
-                htmlRef.current.scrollTop += 1;
+                htmlRef.current.scrollTop += 0.75;
                 scrollCounterRef.current = 0;
             }
             else
